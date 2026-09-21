@@ -18,8 +18,19 @@ class ZoneAdmin(admin.ModelAdmin):
 
 @admin.register(ClimateLog)
 class ClimateLogAdmin(admin.ModelAdmin):
-    list_display = ("id", "zone", "recorded_at", "temp_c", "humidity_pct", "par_umol", "co2_ppm")
+    list_display = (
+        "id",
+        "zone",
+        "recorded_at",
+        "temp_c",
+        "humidity_pct",
+        "par_umol",
+        "co2_ppm",
+        "recorder_name",
+        "reviewer_name",
+    )
     list_filter = ("zone",)
+    search_fields = ("recorder_name", "reviewer_name")
 
 
 @admin.register(IrrigationCycle)

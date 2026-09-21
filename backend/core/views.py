@@ -14,6 +14,7 @@ from .serializers import (
     IrrigationCycleSerializer,
     ZoneSerializer,
 )
+from .signatures import blocked_zone_ids, missing_signature_logs
 
 
 class GreenhouseViewSet(viewsets.ModelViewSet):
@@ -43,6 +44,10 @@ class ClimateLogViewSet(viewsets.ModelViewSet):
         zone_id = self.request.query_params.get("zoneId")
         if zone_id:
             qs = qs.filter(zone_id=zone_id)
+        # 缺签过滤：仅当显式传参时生效；默认返回全量，两者互不污染。
+        # 缺签口径唯一来自 missing_signature_logs。
+        if self.request.query_params.get("missingSignature") in ("1", "true", "True"):
+            qs = missing_signature_logs(qs)
         return qs
 
 
@@ -79,5 +84,10 @@ def dashboard_stats(request):
             start_at__gte=today_start,
             start_at__lt=today_end,
         ).count(),
+        # 两项缺签口径与气候列表过滤、轮灌拦截同源：
+        # 缺签条数 == missingSignature 过滤行数；
+        # 禁灌区数 == 至少有一条缺签气候的分区去重数。
+        "climateLogMissingSignature": missing_signature_logs().count(),
+        "zoneBlockedByMissingSignature": blocked_zone_ids().count(),
     }
     return Response(data)

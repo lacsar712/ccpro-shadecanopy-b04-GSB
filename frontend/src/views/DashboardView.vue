@@ -46,6 +46,14 @@ onMounted(async () => {
         <div class="label">今日排程轮灌</div>
         <div class="value">{{ stats.irrigationScheduledToday }}</div>
       </div>
+      <div class="stat" :class="{ 'stat-warn': stats.climateLogMissingSignature > 0 }">
+        <div class="label">缺签气候记录</div>
+        <div class="value">{{ stats.climateLogMissingSignature }}</div>
+      </div>
+      <div class="stat" :class="{ 'stat-warn': stats.zoneBlockedByMissingSignature > 0 }">
+        <div class="label">因缺签被禁灌区数</div>
+        <div class="value">{{ stats.zoneBlockedByMissingSignature }}</div>
+      </div>
     </div>
 
     <div class="panel" style="margin-top: 18px">
@@ -53,7 +61,15 @@ onMounted(async () => {
       <p style="color:var(--muted);margin:0;line-height:1.7">
         本系统面向温室「分区气候日志与轮灌计划」，不涉及考勤 OA 或库存出入库。
         可在侧栏进入温室、分区、气候与轮灌模块进行 CRUD 操作。
+        气候日志须双签（记录人 / 复核人各至少 2 字且不得相同）；存在缺签历史记录的分区，
+        在补齐双签前禁止新建轮灌。上方两项缺签指标与气候页「只看缺签」过滤、轮灌拦截同一口径。
       </p>
     </div>
   </div>
 </template>
+
+<style scoped>
+.stat-warn .value {
+  color: #b4463a;
+}
+</style>

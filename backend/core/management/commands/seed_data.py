@@ -76,6 +76,9 @@ class Command(BaseCommand):
         )
 
         now = timezone.now()
+        # 双签口径：记录人/复核人去空白后各至少 2 字且不得相同。
+        # 刻意保留 1 条缺签历史行（z1 最早一条，挂在在种可灌分区 A-01），
+        # 用于演示历史数据可读、更新须补签、缺签禁灌与缺签过滤。
         ClimateLog.objects.bulk_create(
             [
                 ClimateLog(
@@ -85,8 +88,11 @@ class Command(BaseCommand):
                     humidity_pct=Decimal("68.00"),
                     par_umol=Decimal("420.00"),
                     co2_ppm=Decimal("650.00"),
+                    recorder_name="张伟",
+                    reviewer_name="李娜",
                 ),
                 ClimateLog(
+                    # 缺签历史行：记录人与复核人均空，A-01 因此被禁止新建轮灌
                     zone=z1,
                     recorded_at=now - timedelta(hours=6),
                     temp_c=Decimal("22.10"),
@@ -101,6 +107,8 @@ class Command(BaseCommand):
                     humidity_pct=Decimal("70.00"),
                     par_umol=Decimal("390.00"),
                     co2_ppm=Decimal("620.00"),
+                    recorder_name="王强",
+                    reviewer_name="赵敏",
                 ),
                 ClimateLog(
                     zone=z4,
@@ -109,6 +117,8 @@ class Command(BaseCommand):
                     humidity_pct=Decimal("75.00"),
                     par_umol=Decimal("350.00"),
                     co2_ppm=Decimal("580.00"),
+                    recorder_name="陈晨",
+                    reviewer_name="孙莉",
                 ),
                 ClimateLog(
                     zone=z4,
@@ -117,6 +127,8 @@ class Command(BaseCommand):
                     humidity_pct=Decimal("80.00"),
                     par_umol=Decimal("50.00"),
                     co2_ppm=Decimal("720.00"),
+                    recorder_name="陈晨",
+                    reviewer_name="周杰",
                 ),
             ]
         )

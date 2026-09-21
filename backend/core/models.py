@@ -62,6 +62,9 @@ class ClimateLog(models.Model):
     )
     par_umol = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     co2_ppm = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    # 双签：记录人与复核人。历史行允许缺签（可读取），但任何更新必须补齐。
+    recorder_name = models.CharField(max_length=80, blank=True, default="")
+    reviewer_name = models.CharField(max_length=80, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

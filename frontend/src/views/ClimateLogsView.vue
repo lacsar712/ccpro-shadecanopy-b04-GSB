@@ -7,6 +7,7 @@ const zones = ref([])
 const error = ref('')
 const editingId = ref(null)
 const filterZoneId = ref('')
+const onlyMissing = ref(false)
 
 function localInputValue(d = new Date()) {
   const pad = (n) => String(n).padStart(2, '0')
@@ -20,6 +21,8 @@ const form = reactive({
   humidityPct: 65,
   parUmol: 300,
   co2Ppm: 600,
+  recorderName: '',
+  reviewerName: '',
 })
 
 function resetForm() {
@@ -30,6 +33,8 @@ function resetForm() {
   form.humidityPct = 65
   form.parUmol = 300
   form.co2Ppm = 600
+  form.recorderName = ''
+  form.reviewerName = ''
 }
 
 async function loadZones() {
@@ -43,11 +48,17 @@ async function load() {
   try {
     const params = {}
     if (filterZoneId.value) params.zoneId = filterZoneId.value
+    // 缺签过滤与默认全量互斥：仅勾选时携带参数
+    if (onlyMissing.value) params.missingSignature = 1
     const { data } = await api.get('/climate-logs/', { params })
     list.value = data.results || data
   } catch {
     error.value = '加载气候日志失败'
   }
+}
+
+function isMissing(row) {
+  return !String(row.recorderName || '').trim() || !String(row.reviewerName || '').trim()
 }
 
 function edit(row) {
@@ -58,12 +69,23 @@ function edit(row) {
   form.humidityPct = Number(row.humidityPct)
   form.parUmol = Number(row.parUmol)
   form.co2Ppm = Number(row.co2Ppm)
+  // 历史缺签行编辑时回填空串，强制补齐双签才能保存
+  form.recorderName = row.recorderName || ''
+  form.reviewerName = row.reviewerName || ''
 }
 
 async function save() {
   error.value = ''
   if (form.humidityPct < 20 || form.humidityPct > 100) {
     error.value = '湿度 humidityPct 须在 20～100'
+    return
+  }
+  if (!form.recorderName.trim() || !form.reviewerName.trim()) {
+    error.value = '记录人与复核人均为必填（至少 2 字）'
+    return
+  }
+  if (form.recorderName.trim() === form.reviewerName.trim()) {
+    error.value = '记录人与复核人不得相同'
     return
   }
   const payload = {
@@ -73,6 +95,8 @@ async function save() {
     humidityPct: form.humidityPct,
     parUmol: form.parUmol,
     co2Ppm: form.co2Ppm,
+    recorderName: form.recorderName.trim(),
+    reviewerName: form.reviewerName.trim(),
   }
   try {
     if (editingId.value) {
@@ -107,6 +131,10 @@ onMounted(async () => {
         <p>记录温湿度、PAR、CO₂；湿度须 ∈ [20, 100]</p>
       </div>
       <div class="actions">
+        <label class="inline-check">
+          <input v-model="onlyMissing" type="checkbox" @change="load" />
+          只看缺签
+        </label>
         <select v-model="filterZoneId" @change="load">
           <option value="">全部分区</option>
           <option v-for="z in zones" :key="z.id" :value="z.id">
@@ -132,6 +160,8 @@ onMounted(async () => {
         <label>湿度 %<input v-model.number="form.humidityPct" type="number" step="0.01" min="20" max="100" /></label>
         <label>PAR µmol<input v-model.number="form.parUmol" type="number" step="0.01" /></label>
         <label>CO₂ ppm<input v-model.number="form.co2Ppm" type="number" step="0.01" /></label>
+        <label>记录人（≥2字）<input v-model="form.recorderName" type="text" maxlength="80" autocomplete="off" /></label>
+        <label>复核人（≥2字）<input v-model="form.reviewerName" type="text" maxlength="80" autocomplete="off" /></label>
       </div>
       <p v-if="error" class="error">{{ error }}</p>
       <div class="actions" style="margin-top:12px">
@@ -150,19 +180,24 @@ onMounted(async () => {
             <th>湿度</th>
             <th>PAR</th>
             <th>CO₂</th>
+            <th>记录人</th>
+            <th>复核人</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in list" :key="row.id">
+          <tr v-for="row in list" :key="row.id" :class="{ 'row-missing': isMissing(row) }">
             <td>{{ new Date(row.recordedAt).toLocaleString() }}</td>
             <td>{{ row.greenhouseName }} / {{ row.zoneCode }}</td>
             <td>{{ row.tempC }}</td>
             <td>{{ row.humidityPct }}</td>
             <td>{{ row.parUmol }}</td>
             <td>{{ row.co2Ppm }}</td>
+            <td>{{ row.recorderName || '—' }}</td>
+            <td>{{ row.reviewerName || '—' }}</td>
             <td class="actions">
-              <button class="btn ghost" @click="edit(row)">编辑</button>
+              <span v-if="isMissing(row)" class="badge missing">缺签</span>
+              <button class="btn ghost" @click="edit(row)">编辑补签</button>
               <button class="btn danger" @click="remove(row.id)">删除</button>
             </td>
           </tr>
@@ -171,3 +206,21 @@ onMounted(async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  color: var(--earth-deep);
+  font-weight: 600;
+}
+.row-missing {
+  background-color: rgba(180, 70, 50, 0.08);
+}
+.badge.missing {
+  background-color: #b4463a;
+  color: #fff;
+}
+</style>

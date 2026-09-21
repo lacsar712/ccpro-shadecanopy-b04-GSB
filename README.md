@@ -47,9 +47,31 @@ docker compose down
 1. **Auth**：JWT `POST /api/auth/token/`，当前用户 `GET /api/auth/me/`
 2. **Greenhouse**：name / location / areaM2 / notes
 3. **Zone**：greenhouseId / zoneCode / cropName / status(`idle|growing|fallow`)；同温室 zoneCode 唯一
-4. **ClimateLog**：zoneId / recordedAt / tempC / humidityPct / parUmol / co2Ppm；**humidityPct ∈ [20, 100]**
+4. **ClimateLog**：zoneId / recordedAt / tempC / humidityPct / parUmol / co2Ppm / recorderName / reviewerName；**humidityPct ∈ [20, 100]**
 5. **IrrigationCycle**：zoneId / startAt / durationMin / waterLiters / status(`scheduled|running|done|skipped`)
-6. **Dashboard**：温室数、growing 分区数、近 24h 气候日志数、今日 scheduled 轮灌数 → `GET /api/dashboard/`
+6. **Dashboard**：温室数、growing 分区数、近 24h 气候日志数、今日 scheduled 轮灌数、缺签气候数、因缺签被禁灌区数 → `GET /api/dashboard/`
+
+## 双签与缺签禁灌规则
+
+气候记录实行「记录人 + 复核人」双签：
+
+- **recorderName / reviewerName**：去首尾空白后**各自至少 2 个字**，且两人**不得相同**，否则返回 **400**。
+- **新建与更新共用同一套校验**（`core/signatures.py::validate_dual_signature`），只改新建不改更新不成立。
+- **历史数据迁移**：种子与已有行若缺双签，**读取/列表照常返回**；但对该行做**任何更新（PUT/PATCH）都必须先补齐双签**，否则 400。补齐后即为正常双签行。
+- **缺签判定**：记录人或复核人去空白后为空即「缺签」（`core/signatures.py::missing_signature_logs`），全系统唯一口径。
+
+缺签与轮灌联动：
+
+- 缺签气候记录**所属分区禁止新建轮灌**，直到该气候补齐双签（或以有效双签的新行覆盖该缺签口径）；新建轮灌命中时返回 **400**。
+- 拦截与缺签判定共用 `blocked_zone_ids()`；**没有缺签行时不拦截**，且只拦「新建」，既有轮灌的更新不受影响。
+- 气候列表支持缺签过滤：`GET /api/climate-logs/?missingSignature=1` 只返回记录人或复核人为空的行；**不传即默认全量**，两种口径互不污染。
+
+仪表盘两项指标与上述完全同源：
+
+- `climateLogMissingSignature` = 缺签过滤返回的行数；
+- `zoneBlockedByMissingSignature` = 至少有一条缺签气候的分区数（去重）= 被禁灌区数。
+
+种子数据刻意保留 **1 条缺签历史行**，挂在在种可灌分区 **东坡一号棚 / A-01** 上，便于演示补签、过滤与禁灌。
 
 ## API 一览
 
@@ -60,7 +82,7 @@ docker compose down
 | GET | `/api/auth/me/` |
 | CRUD | `/api/greenhouses/` |
 | CRUD | `/api/zones/?greenhouseId=&status=` |
-| CRUD | `/api/climate-logs/?zoneId=` |
+| CRUD | `/api/climate-logs/?zoneId=&missingSignature=1` |
 | CRUD | `/api/irrigation-cycles/?zoneId=&status=` |
 | GET | `/api/dashboard/` |
 

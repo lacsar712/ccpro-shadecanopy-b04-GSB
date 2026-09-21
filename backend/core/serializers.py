@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import ClimateLog, Greenhouse, IrrigationCycle, Zone
+from .signatures import blocked_zone_ids, validate_dual_signature
 
 
 class GreenhouseSerializer(serializers.ModelSerializer):
@@ -80,6 +81,8 @@ class ClimateLogSerializer(serializers.ModelSerializer):
     co2Ppm = serializers.DecimalField(
         source="co2_ppm", max_digits=8, decimal_places=2, required=False
     )
+    recorderName = serializers.CharField(source="recorder_name")
+    reviewerName = serializers.CharField(source="reviewer_name")
     zoneCode = serializers.CharField(source="zone.zone_code", read_only=True)
     greenhouseName = serializers.CharField(
         source="zone.greenhouse.name", read_only=True
@@ -97,6 +100,8 @@ class ClimateLogSerializer(serializers.ModelSerializer):
             "humidityPct",
             "parUmol",
             "co2Ppm",
+            "recorderName",
+            "reviewerName",
             "created_at",
         )
         read_only_fields = ("id", "zoneCode", "greenhouseName", "created_at")
@@ -105,6 +110,26 @@ class ClimateLogSerializer(serializers.ModelSerializer):
         if value < 20 or value > 100:
             raise serializers.ValidationError("湿度须在 20～100 之间")
         return value
+
+    def validate(self, attrs):
+        # 新建与更新共用同一套双签校验。
+        # 新建/PUT 时字段必填；PATCH 未带签名字段时以实例现值兜底，
+        # 这样已双签行可单独改其它字段，而历史缺签行（现值为空）
+        # 无论如何都会校验失败 → 必须补齐双签才能保存。
+        recorder = attrs.get("recorder_name")
+        reviewer = attrs.get("reviewer_name")
+        if recorder is None:
+            recorder = getattr(self.instance, "recorder_name", "")
+        if reviewer is None:
+            reviewer = getattr(self.instance, "reviewer_name", "")
+        try:
+            recorder, reviewer = validate_dual_signature(recorder, reviewer)
+        except ValueError as exc:
+            # exc.args[0] 是 {字段: 错误信息} 的 dict
+            raise serializers.ValidationError(exc.args[0])
+        attrs["recorder_name"] = recorder
+        attrs["reviewer_name"] = reviewer
+        return attrs
 
 
 class IrrigationCycleSerializer(serializers.ModelSerializer):
@@ -142,3 +167,15 @@ class IrrigationCycleSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+    def validate(self, attrs):
+        # 仅拦截「新建」轮灌：目标分区存在缺签气候记录则禁止。
+        # 缺签判定与列表过滤 / 仪表盘共用 blocked_zone_ids。
+        # 更新既有轮灌不拦截，没有缺签行时不拦。
+        if self.instance is None:
+            zone = attrs.get("zone")
+            if zone is not None and zone.id in blocked_zone_ids():
+                raise serializers.ValidationError(
+                    {"zoneId": "该分区存在缺签气候记录，补齐双签前禁止新建轮灌"}
+                )
+        return attrs
