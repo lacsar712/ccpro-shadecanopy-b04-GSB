@@ -305,6 +305,10 @@ textarea:focus {
   background: #edd9d4;
   color: var(--danger);
 }
+.badge.unsigned {
+  background: #f3e4c8;
+  color: var(--earth-deep);
+}
 
 .error {
   color: var(--danger);

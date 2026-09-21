@@ -85,7 +85,10 @@ class Command(BaseCommand):
                     humidity_pct=Decimal("68.00"),
                     par_umol=Decimal("420.00"),
                     co2_ppm=Decimal("650.00"),
+                    recorder="王晓露",
+                    reviewer="李谨",
                 ),
+                # 缺签历史行：挂在在种（可灌）分区 z1 上，用于演示缺签过滤与禁灌拦截。
                 ClimateLog(
                     zone=z1,
                     recorded_at=now - timedelta(hours=6),
@@ -93,6 +96,8 @@ class Command(BaseCommand):
                     humidity_pct=Decimal("72.50"),
                     par_umol=Decimal("180.00"),
                     co2_ppm=Decimal("700.00"),
+                    recorder="",
+                    reviewer="",
                 ),
                 ClimateLog(
                     zone=z2,
@@ -101,6 +106,8 @@ class Command(BaseCommand):
                     humidity_pct=Decimal("70.00"),
                     par_umol=Decimal("390.00"),
                     co2_ppm=Decimal("620.00"),
+                    recorder="赵启",
+                    reviewer="王晓露",
                 ),
                 ClimateLog(
                     zone=z4,
@@ -109,6 +116,8 @@ class Command(BaseCommand):
                     humidity_pct=Decimal("75.00"),
                     par_umol=Decimal("350.00"),
                     co2_ppm=Decimal("580.00"),
+                    recorder="陈禾",
+                    reviewer="李谨",
                 ),
                 ClimateLog(
                     zone=z4,
@@ -117,6 +126,8 @@ class Command(BaseCommand):
                     humidity_pct=Decimal("80.00"),
                     par_umol=Decimal("50.00"),
                     co2_ppm=Decimal("720.00"),
+                    recorder="李谨",
+                    reviewer="陈禾",
                 ),
             ]
         )

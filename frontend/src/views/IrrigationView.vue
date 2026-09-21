@@ -13,6 +13,12 @@ function localInputValue(d = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function formatError(data) {
+  if (!data) return '保存失败'
+  if (typeof data === 'string') return data
+  return Object.values(data).flat().join('；')
+}
+
 const form = reactive({
   zoneId: '',
   startAt: localInputValue(),
@@ -82,7 +88,7 @@ async function save() {
     resetForm()
     await load()
   } catch (e) {
-    error.value = JSON.stringify(e.response?.data || '保存失败')
+    error.value = formatError(e.response?.data)
   }
 }
 
@@ -103,7 +109,7 @@ onMounted(async () => {
     <div class="page-head">
       <div>
         <h1>轮灌计划</h1>
-        <p>按分区安排起灌时间、时长与水量</p>
+        <p>按分区安排起灌时间、时长与水量；分区存在缺签气候记录时禁止新建轮灌</p>
       </div>
       <div class="actions">
         <select v-model="filterStatus" @change="load">

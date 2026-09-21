@@ -46,6 +46,14 @@ onMounted(async () => {
         <div class="label">今日排程轮灌</div>
         <div class="value">{{ stats.irrigationScheduledToday }}</div>
       </div>
+      <div class="stat">
+        <div class="label">缺签气候记录</div>
+        <div class="value">{{ stats.unsignedClimateCount }}</div>
+      </div>
+      <div class="stat">
+        <div class="label">因缺签禁灌分区</div>
+        <div class="value">{{ stats.irrigationBlockedZoneCount }}</div>
+      </div>
     </div>
 
     <div class="panel" style="margin-top: 18px">
@@ -53,6 +61,8 @@ onMounted(async () => {
       <p style="color:var(--muted);margin:0;line-height:1.7">
         本系统面向温室「分区气候日志与轮灌计划」，不涉及考勤 OA 或库存出入库。
         可在侧栏进入温室、分区、气候与轮灌模块进行 CRUD 操作。
+        气候日志须双签：记录人与复核人去空白后均至少 2 字且不得相同；
+        分区存在缺签气候记录时禁止新建轮灌，补齐双签后自动解禁。
       </p>
     </div>
   </div>

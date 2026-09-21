@@ -14,6 +14,7 @@ from .serializers import (
     IrrigationCycleSerializer,
     ZoneSerializer,
 )
+from .signing import unsigned_climate_logs, unsigned_climate_zone_ids
 
 
 class GreenhouseViewSet(viewsets.ModelViewSet):
@@ -43,6 +44,9 @@ class ClimateLogViewSet(viewsets.ModelViewSet):
         zone_id = self.request.query_params.get("zoneId")
         if zone_id:
             qs = qs.filter(zone_id=zone_id)
+        # 缺签过滤：?unsigned=1 仅返回缺签行；缺省仍返回全量，两者互不污染。
+        if self.request.query_params.get("unsigned") in ("1", "true"):
+            qs = unsigned_climate_logs(qs)
         return qs
 
 
@@ -78,6 +82,12 @@ def dashboard_stats(request):
             status=IrrigationCycle.STATUS_SCHEDULED,
             start_at__gte=today_start,
             start_at__lt=today_end,
+        ).count(),
+        # 与缺签过滤/禁灌判定同源（core.signing）：
+        # 缺签气候条数 = 缺签过滤行数；禁灌区数 = 至少有一条缺签气候的分区数。
+        "unsignedClimateCount": unsigned_climate_logs().count(),
+        "irrigationBlockedZoneCount": Zone.objects.filter(
+            pk__in=unsigned_climate_zone_ids()
         ).count(),
     }
     return Response(data)
